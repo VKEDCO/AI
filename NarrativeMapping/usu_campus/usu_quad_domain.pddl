@@ -41,3 +41,5 @@
 			    (direction ?newdir))
          :effect (and (facing ?agent ?newdir)
 	 	      (not (facing ?agent ?olddir))))
+	 	      
+)
