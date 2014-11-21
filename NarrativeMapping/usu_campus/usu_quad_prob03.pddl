@@ -23,8 +23,6 @@
 	   (path AnimalSciences MiddleOfQuad South)
 	   (path RayBWest MiddleOfQuad North)
 	   (path MiddleOfQuad RayBWest South)
-	   (path MiddleOfQuad AnimalSciences East)
-	   (path AnimalSciences MiddleOfQuad West)
 	   (path MiddleOfQuad AgriculturalSciences East)
 	   (path AgriculturalSciences MiddleOfQuad West)
 	   )
