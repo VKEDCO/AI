@@ -1,0 +1,46 @@
+;;; Navigation problem 01
+;;; Vladimir Kulyukin
+(define (problem usu-quad-lex-prob01)
+	(:domain usu-main-quad-lexicalization)
+	(:objects OldMain AnimalSciences RayBWest
+		  AgriculturalSciences MiddleOfQuad
+		  East North South West 
+		  Agent01 Route01 Turn01 Travel01 Travel02)
+	(:init
+		(agent Agent01)
+		(building OldMain)
+		(building AnimalSciences)
+		(building RayBWest)
+		(building AgriculturalSciences)
+		(place MiddleOfQuad)
+		(direction East)
+		(direction North)
+		(direction South)
+		(direction West)
+		(turn-action Turn01)
+		(travel-action Travel01)
+		(travel-action Travel02)
+		(agent-of Turn01 Agent01)
+		(agent-of Travel01 Agent01)
+		(agent-of Travel02 Agent01)
+		(route Route01)
+		(action-of Route01 Travel01)
+		(action-of Route01 Travel02)
+		(action-of Route01 Turn01)
+		(start-of Route01 OldMain)
+		(end-of Route01 AnimalSciences)
+		(before Travel01 Turn01 Route01)
+		(before Turn01 Travel02 Route01)
+		(at Agent01 OldMain)
+		(facing Agent01 East))
+        (:goal
+	 (and 
+	      (lexicalized-agent-location Agent01 OldMain)
+	      (lexicalized-agent-direction Agent01 East)
+	      (lexicalized-agent-travel-command Agent01 Travel01 OldMain MiddleOfQuad East)
+	      (lexicalized-agent-location Agent01 MiddleOfQuad)
+	      (lexicalized-agent-turn-command Agent01 Turn01 MiddleOfQuad East North)
+	      (lexicalized-agent-direction Agent01 North)
+	      (lexicalized-agent-travel-command Agent01 Travel02 MiddleOfQuad AnimalSciences North)
+	 ))
+)
