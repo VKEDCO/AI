@@ -1,0 +1,7 @@
+((lexicalize-agent-location-at-building agent01 oldmain)
+ (lexicalize-agent-direction agent01 east)
+ (lexicalize-agent-travel-command-from-building-to-place agent01 travel01 oldmain middleofquad east)
+ (lexicalize-agent-location-at-place agent01 middleofquad)
+ (lexicalize-agent-turn-command-at-place agent01 turn01 middleofquad east north)
+ (lexicalize-agent-direction agent01 north)
+ (lexicalize-agent-travel-command-from-place-to-building agent01 travel02 middleofquad animalsciences north))
