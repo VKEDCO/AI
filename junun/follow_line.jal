@@ -1,0 +1,259 @@
+-- follow_line procedure is defined & called
+-- at the end of the file.
+
+include 16f877_20
+include jlib
+include markiii
+
+-- var byte rec_val 
+var byte left_vel
+var byte right_vel
+var byte dutycycleL
+var byte dutycycleR
+
+procedure timer_isr is
+	pragma interrupt
+
+	f877_tmr1h = 0x3c
+	f877_tmr1l = 0xb0
+
+	pin_b1 = on
+	int_delay_10uS(dutycycleR);
+	pin_b1 = off
+--	pin_b1 = off
+	
+	pin_b2 = on
+	int_delay_10uS(dutycycleL);
+	pin_b2 = off
+	
+	pin_b5 = on
+	int_delay_10uS(dutycycleL);
+	pin_b5 = off
+	
+	pin_b1 = off
+	pin_b2 = off
+	pin_b5 = off
+	
+	tmr1if = off
+end procedure
+
+
+port_a_direction = all_input
+port_b_direction = all_output
+port_c_direction = 0b_1100_0000
+port_d_direction = all_output
+port_e_direction = all_input
+
+F877_serial_setup (38)  -- 38400 baud
+
+--	delay_100ms (5)
+
+
+-- timer 1 theory of opperation.
+-- Timer1 interrupt goes off when the 16 bits of TMR1H:TMR1L role over
+-- to zero.  This regiter pair get incremented every perscaler x 4 number of
+-- clock ticks.  So with a prescaler of 2, the timer registers get 
+-- incremented every  8 clocks.
+--
+-- 20ms will take 50000 incriments of the TMR1 registers with a 20MHz 
+-- chip.  So on each interrupt we need to initialize TMR1H:TMR1L such
+-- that it will roll over in 50000 increments, i.e. 65536 - 50000 = 15536
+-- or 0x3cb0.  TMR1H = 0x3C, TMR1L=0xB0.  Simple.....sort-of.
+--
+
+-- rec_val = 0
+dutycycleL = 150
+dutycycleR = 150
+left_vel = 5
+right_vel = 5
+-- setup timer 1 and pre-scaler values...
+t1ckps1 = off
+t1ckps0 = on
+t1oscen = off
+t1sync = off
+tmr1cs = off
+tmr1on = off
+f877_tmr1h = 0x3c
+f877_tmr1l = 0xb0
+tmr1if = off
+bank_1
+tmr1ie = on
+bank_0
+intcon_gie = on
+intcon_peie = on
+tmr1on = on
+
+procedure ht_crlf is
+
+  f877_serial_transmit (ASCII_CR)
+  f877_serial_transmit (ASCII_LF)
+
+end procedure
+
+procedure ht_crlf2 is
+
+  ht_crlf
+  ht_crlf
+
+end procedure
+
+procedure left_wheel (byte in vel) is
+	   dutycycleL = (vel * 10) + 100
+end procedure
+
+procedure right_wheel (byte in vel) is
+	   dutycycleR = 200 - (vel * 10)
+end procedure
+
+procedure robot_stop is
+  left_wheel(5)
+  right_wheel(5)
+end procedure
+
+procedure back_and_forth(byte in count) is
+  var byte temp
+  temp = count
+  
+  while ( temp > 0 ) loop
+	left_wheel(9)
+	right_wheel(9)
+	delay_2s(1)
+	left_wheel(1)
+	right_wheel(1)
+	delay_2s(1)
+        temp = temp - 1
+  end loop
+  
+  robot_stop
+
+end procedure
+
+procedure spin_clockwise(byte in delay) is
+	left_wheel(9)
+	right_wheel(1)
+	delay_10ms(delay)
+        robot_stop
+end procedure
+
+procedure spin_counter_clockwise(byte in delay) is
+	left_wheel(1)
+	right_wheel(9)
+	delay_10ms(delay)
+        robot_stop
+end procedure
+
+procedure move_forward(byte in delay) is
+       left_wheel(7)
+       right_wheel(7)
+       delay_10ms(delay)
+       robot_stop
+end procedure
+
+-- back_and_forth(4)
+
+-- spin_clockwise(2)
+-- delay_2s(1)
+-- spin_clockwise(3)
+-- delay_2s(1)
+-- spin_clockwise(4)
+
+procedure square_clockwise is 
+  var byte temp
+  temp = 4
+
+  while ( temp > 0 ) loop
+     move_forward(2)
+     spin_clockwise(25)
+     temp = temp - 1
+  end loop
+
+end procedure
+
+-- square_clockwise
+
+procedure move_backward(byte in delay) is
+   left_wheel(1)
+   right_wheel(1)
+   delay_100ms(delay)
+   robot_stop  
+end procedure
+
+-- adc8bitL is the left floor sensor
+-- adc8bitC is the middle floor sensor
+-- adc8bitR is the right floor sensor
+var byte adc8bitL
+var byte adc8bitC
+var byte adc8bitR
+
+-- is black seen on any floor sensor?
+var byte blackSeen
+procedure is_black_seen is
+   blackSeen = 0
+   if ( adc8bitL > 128 | adc8bitC > 128 | adc8bitR > 128 )
+     then blackSeen = 1 
+   end if
+   PrintHex(blackSeen)
+   ht_crlf2
+end procedure
+
+-- turn left: spin right wheel faster
+procedure turn_left (byte in delay) is
+	left_wheel(4)
+	right_wheel(9)
+	delay_1ms(delay)
+        robot_stop
+end procedure
+
+-- turn right: spin left wheel faster
+procedure turn_right (byte in delay) is
+	left_wheel(9)
+	right_wheel(4)
+	delay_1ms(delay)
+        robot_stop
+end procedure
+
+-- turn left or right
+procedure take_line_follow_action is
+  
+  if ( adc8bitL > 128 )
+    then turn_left(25)
+  elsif ( adc8bitC > 128 )
+    then move_forward(1)
+  elsif ( adc8bitR > 128 )
+    then turn_right(25)
+  else
+     turn_left(5)
+   end if
+
+end procedure
+
+procedure follow_line is
+
+
+    forever loop
+
+        -- left line sensor	
+	f877_adc_8(0, 7, adc8bitL)
+
+        -- center line sensor
+	f877_adc_8(0 ,6 , adc8bitC)
+
+        -- right line sensor
+	f877_adc_8(0 ,5 , adc8bitR)
+
+        -- print out the values of the
+        -- three sensors
+	-- PrintHex(adc8bitL)
+	-- ht_crlf
+	-- PrintHex(adc8bitC)
+	-- ht_crlf
+        -- PrintHex(adc8bitR)
+        -- ht_crlf 
+
+	take_line_follow_action
+
+    end loop
+
+end procedure
+
+follow_line
