@@ -1,0 +1,230 @@
+SNP 1.0: A Semantic Network Processor
+Vladimir Kulyukin
+Department of Computer Science
+Utah State University
+
+Abstract
+This document describes how to start and work with SNP 1.0, a semantic network processor
+written in CLOS. SNP implements a DMAP-style expectation-based spreading activation
+algorithm.
+
+1. Introduction
+
+SNP is a semantic network processor that implements a DMAP-style expectation-based spread-
+ing activation algorithm in a semantic network of frames. The frames in the network are
+connected via abstraction and packaging relationships.
+
+The formal concept of semantic networks was first introduced by Quillian in his seminal
+paper on the Teachable Language Comprehender system (Quillian 1969). Quillian proposed
+a model of language understanding that consisted of a network of concepts connected to each
+other with different relations and a spreading activation algorithm that related textual inputs
+to certain concepts in the network. Quillian also argued for the gradual modification of the
+system’s knowledge through user feedback.
+
+Woods (1975) investigated the theoretical foundations of semantic networks and demon-
+strated that semantic networks can be used for storing human verbal knowledge by including
+mechanisms that represent propositions. Riesbeck and Martin (1985) proposed a new type of
+spreading activation which they called Direct Memory Access Parsing (DMAP). The semantic
+networks that used DMAP (DMAP-Nets) conceptualized natural language understanding as
+a recognition process and rejected the assumption that a syntactic analysis is required as a
+front-end to natural language understanding systems. A key innovation behind DMAP was
+to use the words themselves to directly reference relevant memory structures.
+Fitzgerald (1995) extended the ideas of Riesbeck and Martin (1985) to build DMAP-based
+conceptual parsers embedded in various software applications. Several projects funded by
+NASA used the DMAP-based semantic network technology to build dialog-based systems
+1to various hardware devices, e.g., a space shuttle camera (Fitzgerald and Wiseman 1997;
+Fitzgerald and Firby 2000; Bonasso 2000).
+
+Kulyukin and Settle (2001) gave a rigorous formalization of DMAP-Nets by introducing
+the notion of token sequences used for concept recognition and argued that the recognition and
+acquisition of knowledge can be an integral part of speech recognition. Kulyukin and Steele
+(2002a; 2002b) showed both practical and theoretical advantages of representing the concep-
+tual memory of autonomous agents as a set of context-free command and control productions.
+They also proved several theoretical results about the relationship between DMAP-Nets and
+context-free grammars.
+
+The Semantic Network Processor has been successfully used to construct voice control
+interfaces to software agents and to autonomous robots (Kulyukin and Steele 2002a; Kulyukin
+and Steele 2002b).
+
+2. Installation
+
+To run SNP, you need an ANSI Common Lisp. SNP was implemented in Allegro Common
+Lisp (ACL). A trial version of ACL is available from http://www.franz.com.
+This github repo contains the following files:
+
+• README (this document),
+• snp-loader.lisp,
+• deftable.lisp,
+• c-frame-manager.lisp,
+• c-snp.lisp,
+• utils.lisp,
+• sample-frames.lisp,
+• sample-tokseqs.lisp.
+• c-fm-with-vars.lisp
+• c-snp-with-vars.lisp
+• sample-var-frames.lisp
+• sample-var-tokseqs.lisp
+
+2.1 Loading SNP
+
+To load SNP, cd to the directory where the above files are installed and evaluate the following
+commands:
+> (load ‘‘snp-loader.lisp’’)
+> (in-package ‘‘USER’’)
+> (snp-load-everything)
+The last command loads SNP into Lisp.
+
+2.2 Starting SNP
+
+To become operational, SNP needs two files: a file with frames and a file with token sequences.
+The frames file defines a semantic network and the token sequences file associates token se-
+quences to certain frames in the network. When those token sequences are recognized in the
+input, the corresponding frames are considered activated. The zip archive provides two sample
+files that can be used to start SNP: sample-frames.lisp and sample-tokseqs.lisp. Thus, to start
+SNP, evaluate:
+
+> (in-package ‘‘SNP’’)
+> (toggle-snp :frames ‘‘sample-frames.lisp’’
+:tokseqs ‘‘sample-tokseqs.lisp’’)
+
+The above call creates an instance of the c-snp class defined in c-snp.lisp and puts that
+instance into the global variable *snp*. You can print out all of the frames known to the
+system by evaluating:
+
+> (print-frames *snp*)
+
+To start processing token sequences and spreading activation in the network, evaluate:
+
+> (process-tokens *snp* ’(john gave mary an apple))
+
+If you print out the frames after the above call, you will see a new PTRANS frame created
+in the memory.
+
+2.3 Adding callbacks to frames
+
+SNP allows you to associate arbitrary pieces of Lisp code with frames. In the DMAP jargon,
+these pieces of code are referred to as callbacks. A callback runs as soon as the frame it is
+associated with becomes activated. A callback is a function of one argument, which is called on
+the name of the frame with which it is associated. The file c-snp.lisp provides three methods
+to handle callbacks:
+
+• (add-callback <snp> <callback>),
+• (add-callback-to-frame <snp> <frame> <callback>),
+• (add-default-callbacks <snp>).
+
+The first method adds a callback to every frame in the memory. The second method adds
+a callback to a specific frames. The third method adds a default callback to each frame in
+the memory. The default callback simply prints out the name of the frame as soon as it is
+activated. The default callbacks are useful for debugging. Here is a sample interaction:
+
+> (add-default-callbacks *snp*)
+T
+> (process-tokens *snp* ’(john gave mary an apple))
+M-JOHN referenced...
+M-MARY referenced...
+M-APPLE referenced...
+M-PTRANS referenced...
+NIL
+
+To remove all callbacks, evaluate:
+> (remove-callbacks *snp*)
+
+The more you run SNP, the more dynamic expectations it accumulates. Thus, you should
+periodically clear those expectations. You can do it either with the clear-expectations
+method or by changing the value of the delete-p key in the deactivate-expectation method. If
+the value is true, the deactivated expectations are removed. Of course, if you want to debug
+or implement a backtracking mechanism, delete-p should be left as is.
+
+3. Defining Semantic Networks
+
+The two macros that you need in order to set up a semantic network are defframe and deftok-
+seq. The first macro defines frames and their relationships to other frames in the network.
+The second associates token sequences with frames. The macros have the following syntax:
+
+(defframe <frame-name> (<super-frame-0> ... <super-frame-n>)
+(<slot-0> ... <slot-n>))
+(deftokseq <frame-name> tok-0 ... tok-n)
+
+By convention, the names of the frames start with M-, M stands for the Memory Or-
+ganization Package (MOP), a term introduced by Roger Schank in his 1980 book Dynamic
+Memory (Schank 1980). Another convention used in SNP is that frame names are keywords.
+This is done to avoid package symbol conflicts in multi-package applications. The names
+of the slots that define packaging relationships start with :==. See sample-frames.lisp and
+sample-tokseqs.lisp for details.
+
+4. Extending Token Sequences with Variables
+
+The standard SNP does not provide for any pattern matching behavior in token sequences.
+In other words, the valid token sequences must contain either frame tokens or non-frame
+tokens that must be observed in the input directly or indirectly thourgh spreading activation.
+However, it is sometimes useful to use variables in token sequences. For example, suppose you
+want to define a frame corresponding to a number. To activate that frame, all you need to
+see is a number, any number. This can be accomplished it by extending the deftokseq macro
+to process token sequences with variables:
+
+> (deftokseq m-number (?x . numberp))
+The semantics of the above definition is as follows. If a token satisfies the numberp
+predicate, it is allowed to match and, consequently, activate the number frame.
+The mechanism for processing variables in token sequences is implemented in c-snp-with-
+vars.lisp and c-fm-with-vars.lisp. The c-snp-with-vars class is derived from the c-snp
+class. The c-fm-with-vars class is derives from c-frame-manager. The files sample-var-
+frames.lisp and sample-var-tokseqs.lisp give examples of variables in token sequences.
+If you decide to add variables to your token sequences, you should be aware of the following
+two restrictions placed on variables in token sequences. First, every variable must have an
+5associated predicate. This is done to prevent chaotic spreads of activation. This does not
+mean, of course, that the predicates cannot be general to allow generous matches. Second, a
+variable can be used at most once with respect to a frame. In other words, a variable can be
+used in at most one token sequences associated with a given frame. The same variable can be
+used in token sequences of two different frames. For example,
+
+;;; this is a bad definition
+(deftokseq m-number-tuple (?x . numberp) (?x . numberp))
+;;; this is a good definition
+(deftokseq m-number-tuple (?x . numberp) (?y . numberp))
+;;; this is a good definition
+(deftokseq m-number-triple (?x . numberp) (? y. numberp) (?z . numberp))
+
+5. References
+
+Bonasso, P. 2000. “Training Humans to Talk to Robots,” Proceedings of the 2000 Spring
+Symposium of the American Association for Artificial Intelligence, AAAI Press, Stanford,
+CA.
+
+Fitzgerald, W. 1995. “Building Embedded Conceptual Parsers,” Ph.D. Dissertation, The
+Institute for the Learning Sciences, Northwestern University.
+
+Fitzgerald, W. and Firby, R. J. 2000. “Dialogue Systems Require a Reactive Task Architec-
+ture,” Proceedings of the 2000 Spring Symposium of the American Association for Artificial
+Intelligence, AAAI Press, Stanford, CA.
+
+Fitzgerald, W. and Wiseman, J. 1997. “Approaches to Integrating Natural Language Un-
+derstanding and Task Execution in the DPMA AERCam Testbed,” Neodesic, Inc. White
+paper.
+
+Kulyukin, V. and Settle, A. 2001. “Ranked Retrieval with Semantic Networks and Vector
+Spaces,” Journal of the American Society for Information Science and Technology, 52(4), pp.
+1124-1233.
+
+Kulyukin, V. and Steele, A. 2002a. “Input Recognition in Voice Control Interfaces to Au-
+tonomous Robots,” Proceedings of the 2002 International Lisp Conference (ILC-2002), San
+Francisco, CA.
+
+Kulyukin, V. and Steele, A. 2002b. “Instruction and Action in the Three-Tiered Robot
+Architecture,” Proceedings of the 2002 International Symposium on Robotics and Automation
+6(ISRA-2002), IEEE Press, Toluco, Mexico.
+
+Martin, C.E. 1990. Direct Memory Access Parsing. Ph.D. Dissertation, Department of Com-
+puter Science, Yale University.
+
+Riesbeck, C. K. and Martin, C. E. 1985. “Direct Memory Access Parsing,” Technical Report
+YALEU/DCS/RR 354, Computer Science Department, Yale University.
+
+Woods, W. A. 1975. “What’s in a Link: Foundations for Semantic Networks,” Bobrow, D. G.
+and Collins, A. (Eds.), Representation and Understanding, Academic Press, New York, pp.
+35-82.
+
+Schank, R. C. 1980. Dynamic Memory, Cambridge University Press, New York.
+
+Schank, R.C. and Riesbeck, C.K. Inside Case-Based Reasoning, Hillsdale, NJ: Lawrence Erl-
+baum Associates.
